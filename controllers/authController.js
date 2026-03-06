@@ -5,7 +5,7 @@ class AuthController {
     try {
       const { username, firstName, lastName, email, password } = req.body;
       const user = await authService.register(username, firstName, lastName, email, password);
-      res.status(201).json({ message: 'User registered successfully', user });
+      res.status(201).json({ message: 'User registered successfully. Please verify your email', user });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }

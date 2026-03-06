@@ -16,13 +16,20 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
     const user = await userRepository.createUser({
       username,
       firstName,
       lastName,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      otp,
+      otpExpires,
+      isEmailVerified: false
     });
+
+    await sendEmail(email, 'Verify Your Email', `Your OTP is ${otp}. It expires in 10 minutes.`);
 
     return user;
   }
@@ -31,6 +38,10 @@ class AuthService {
     const user = await userRepository.findUserByEmail(email);
     if (!user) {
       throw new Error('Invalid email or password');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new Error('Email not verified');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -70,6 +81,10 @@ class AuthService {
       throw new Error('User not found');
     }
 
+    if (!user.otp || !user.otpExpires) {
+      throw new Error('Invalid or expired OTP');
+    }
+
     if (user.otp !== otp) {
       throw new Error('Invalid OTP');
     }
@@ -78,17 +93,21 @@ class AuthService {
       throw new Error('OTP expired');
     }
 
-    // Generate a temporary reset token valid for 5 minutes
+    if (!user.isEmailVerified) {
+      await userRepository.updateUser(user.id, {
+        isEmailVerified: true,
+        otp: null,
+        otpExpires: null
+      });
+
+      return { message: 'Email verified successfully' };
+    }
+
     const resetToken = jwt.sign(
       { id: user.id, scope: 'reset_password' },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '5m' }
     );
-
-    // Clear OTP after successful verification (optional, but good practice to prevent reuse)
-    // await userRepository.updateUser(user.id, { otp: null, otpExpires: null });
-    // Wait, if we clear it here, and the user refreshes the page, they might need to request OTP again.
-    // Better to clear it on password reset.
 
     return { message: 'OTP verified', resetToken };
   }

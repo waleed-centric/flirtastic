@@ -23,6 +23,7 @@ const verifyOtpValidation = [
 ];
 
 const resetPasswordValidation = [
+  check('resetToken').notEmpty().withMessage('Reset token is required'),
   check('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
 ];
 
