@@ -16,6 +16,14 @@ class UserRepository {
   async findUserById(id) {
     return await User.findByPk(id);
   }
+
+  async updateUser(userId, data) {
+    return await User.update(data, {
+      where: { id: userId },
+      returning: true,
+      plain: true
+    });
+  }
 }
 
 module.exports = new UserRepository();
